@@ -50,18 +50,41 @@ search_button = st.sidebar.button(
 def get_coordinates_from_postcode(postcode: str) -> Optional[tuple]:
     """Konvertiert PLZ zu Koordinaten (OpenStreetMap)"""
     try:
+        # Versuche Nominatim mit besseren Parametern
         response = requests.get(
             "https://nominatim.openstreetmap.org/search",
-            params={"q": f"{postcode}, Germany", "format": "json"},
-            timeout=10,
-            headers={"User-Agent": "EmiliesTankDiscount/1.0"}
+            params={
+                "q": f"{postcode}, Germany",
+                "format": "json",
+                "limit": 1
+            },
+            timeout=15,
+            headers={"User-Agent": "EmiliesTankDiscount/1.0"},
+            allow_redirects=True
         )
-        data = response.json()
-        if data:
-            return (float(data[0]["lat"]), float(data[0]["lon"]))
+        response.raise_for_status()
+
+        # Überprüfe, ob die Antwort gültig ist
+        if response.status_code == 200 and response.text:
+            data = response.json()
+            if data and len(data) > 0:
+                return (float(data[0]["lat"]), float(data[0]["lon"]))
+
+        st.error(f"❌ Postleitzahl '{postcode}' konnte nicht gefunden werden")
+        return None
+
+    except requests.exceptions.Timeout:
+        st.error("❌ Timeout: API antwortet zu langsam. Versuche es später nochmal.")
+        return None
+    except requests.exceptions.ConnectionError:
+        st.error("❌ Verbindungsfehler: Prüfe deine Internetverbindung.")
+        return None
+    except ValueError as e:
+        st.error(f"❌ Fehler beim Parsen der API-Antwort. Versuche es in ein paar Sekunden nochmal.")
+        return None
     except Exception as e:
-        st.error(f"❌ Fehler bei Geocoding: {e}")
-    return None
+        st.error(f"❌ Unerwarteter Fehler: {str(e)}")
+        return None
 
 
 def get_gas_stations(latitude: float, longitude: float, fuel_type: str) -> Optional[List[Dict]]:
