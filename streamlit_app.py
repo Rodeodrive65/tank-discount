@@ -37,7 +37,7 @@ postcode = st.sidebar.text_input(
 
 fuel_type = st.sidebar.selectbox(
     "Treibstofftyp:",
-    ["Diesel", "Super E10", "Super E5", "LPG"],
+    ["Diesel", "Super E10", "Super E5"],
     index=0
 )
 
@@ -96,8 +96,7 @@ def get_gas_stations(latitude: float, longitude: float, fuel_type: str) -> Optio
         fuel_map = {
             "diesel": "diesel",
             "super e10": "e10",
-            "super e5": "e5",
-            "lpg": "lpg"
+            "super e5": "e5"
         }
 
         params = {
