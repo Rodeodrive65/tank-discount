@@ -16,44 +16,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS
-st.markdown("""
-<style>
-    .main-header {
-        text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 30px;
-        border-radius: 10px;
-        color: white;
-        margin-bottom: 20px;
-    }
-    .station-card {
-        background: #f0f7ff;
-        border-left: 4px solid #007AFF;
-        padding: 15px;
-        border-radius: 5px;
-        margin: 10px 0;
-    }
-    .price-highlight {
-        font-size: 24px;
-        font-weight: bold;
-        color: #28A745;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Titel
+st.title("💰 Emilie's Tank Discount")
+st.markdown("*Finde die günstigsten Tankstellen in deiner Nähe*")
 
 # App-Konfiguration
 API_BASE_URL = "https://creativecommons.tankerkoenig.de/json/list.php"
 API_KEY = "571f061f-8721-47b0-abe6-cd494b68db86"
 RADIUS_KM = 5
-
-# Titel
-st.markdown("""
-<div class="main-header">
-    <h1>💰 Emilie's Tank Discount</h1>
-    <p>Finde die günstigsten Tankstellen in deiner Nähe</p>
-</div>
-""", unsafe_allow_html=True)
 
 # Sidebar für Eingaben
 st.sidebar.header("🔍 Suche")
@@ -170,7 +140,7 @@ if search_button:
                 st.error(f"❌ Postleitzahl '{postcode}' nicht gefunden")
             else:
                 latitude, longitude = coords
-                st.success(f"✅ Koordinaten: {latitude:.4f}, {longitude:.4f}")
+                st.success(f"✅ Koordinaten gefunden!")
 
                 # Tankstellen abrufen
                 stations = get_gas_stations(latitude, longitude, fuel_type)
@@ -182,36 +152,31 @@ if search_button:
 
                     if cheapest:
                         st.success(f"✅ {len(cheapest)} Tankstellen gefunden!")
+                        st.markdown("---")
 
-                        # Ergebnisse anzeigen
-                        st.markdown("## 📍 Die 10 günstigsten Tankstellen")
-
+                        # Tabelle anzeigen
+                        st.subheader("📊 Übersicht")
+                        table_data = []
                         for i, station in enumerate(cheapest, 1):
-                            col1, col2 = st.columns([3, 1])
+                            table_data.append({
+                                "Platz": i,
+                                "Name": station.get('name', 'N/A'),
+                                "Preis (€)": f"{station.get('price', 0):.3f}",
+                                "Entfernung (km)": f"{station.get('dist', 0):.1f}"
+                            })
+                        st.dataframe(table_data, use_container_width=True)
 
-                            with col1:
-                                st.markdown(f"""
-                                <div class="station-card">
-                                    <h4>#{i} {station.get('name', 'Unbekannt')}</h4>
-                                    <p>
-                                        <strong>Adresse:</strong> {station.get('street', 'N/A')} {station.get('houseNumber', '')}<br>
-                                        <strong>Ort:</strong> {station.get('postCode', '')} {station.get('place', '')}<br>
-                                        <strong>Marke:</strong> {station.get('brand', 'N/A')}
-                                    </p>
-                                </div>
-                                """, unsafe_allow_html=True)
+                        st.markdown("---")
+                        st.subheader("📍 Detaillierte Informationen")
 
-                            with col2:
-                                st.metric(
-                                    "Preis",
-                                    f"€{station.get('price', 0):.3f}",
-                                    delta=None
-                                )
-                                st.metric(
-                                    "Entfernung",
-                                    f"{station.get('dist', 0):.1f} km",
-                                    delta=None
-                                )
+                        # Detaillierte Ansicht
+                        for i, station in enumerate(cheapest, 1):
+                            st.write(f"**#{i} {station.get('name', 'Unbekannt')}**")
+                            st.write(f"Marke: {station.get('brand', 'N/A')}")
+                            st.write(f"Adresse: {station.get('street', 'N/A')} {station.get('houseNumber', '')}")
+                            st.write(f"PLZ/Ort: {station.get('postCode', '')} {station.get('place', '')}")
+                            st.write(f"💰 Preis: **€{station.get('price', 0):.3f}** | 📏 Entfernung: **{station.get('dist', 0):.1f} km**")
+                            st.divider()
                     else:
                         st.warning("⚠️ Keine Ergebnisse nach Filterung")
 
@@ -230,5 +195,5 @@ die günstigsten Tankstellen zu finden!
 
 **API:** Tankerkönig (CC)
 **Framework:** Streamlit
-**Plattform:** Web (PC, Tablet, Handy)
+**Plattform:** Web (überall!)
 """)
