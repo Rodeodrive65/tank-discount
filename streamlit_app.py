@@ -6,6 +6,7 @@ Finde die günstigsten Tankstellen überall und auf jedem Gerät
 import streamlit as st
 import requests
 import math
+import time
 from typing import Optional, List, Dict
 
 # Page Config
@@ -47,8 +48,10 @@ search_button = st.sidebar.button(
 )
 
 # Hilfsfunktionen
+@st.cache_data(ttl=3600)  # Cache für 1 Stunde
 def get_coordinates_from_postcode(postcode: str) -> Optional[tuple]:
     """Konvertiert PLZ zu Koordinaten (OpenStreetMap)"""
+    time.sleep(1.1)  # Respect Nominatim rate limit
     try:
         # Versuche Nominatim mit besseren Parametern
         response = requests.get(
