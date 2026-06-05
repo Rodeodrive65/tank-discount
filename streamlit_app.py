@@ -25,6 +25,7 @@ st.markdown("*Finde die günstigsten Tankstellen in deiner Nähe*")
 API_BASE_URL = "https://creativecommons.tankerkoenig.de/json/list.php"
 API_KEY = "571f061f-8721-47b0-abe6-cd494b68db86"
 RADIUS_KM = 5
+OPENCAGE_API_KEY = "05b24e367edb47b2b27b9266a048c352"
 
 # Sidebar für Eingaben
 st.sidebar.header("🔍 Suche")
@@ -69,34 +70,34 @@ POSTCODE_CACHE = {
     "22305": (53.5850, 10.0167),  # Hamburg-Alsterdorf
 }
 
-@st.cache_data(ttl=86400)  # Cache 24 Stunden
+@st.cache_data(ttl=86400)
 def get_coordinates_from_postcode(postcode: str) -> Optional[tuple]:
-    """Konvertiert PLZ zu Koordinaten (Nominatim mit Cache)"""
+    """Konvertiert PLZ zu Koordinaten (OpenCage - stabil!)"""
     try:
         response = requests.get(
-            "https://nominatim.openstreetmap.org/search",
+            "https://api.opencagedata.com/geocode/v1/json",
             params={
                 "q": f"{postcode}, Germany",
-                "format": "json",
-                "limit": 1,
-                "countrycodes": "de"
+                "key": OPENCAGE_API_KEY,
+                "countrycode": "de",
+                "limit": 1
             },
-            timeout=10,
-            headers={"User-Agent": "EmiliesTankDiscount/1.0"}
+            timeout=10
         )
         response.raise_for_status()
-
         data = response.json()
-        if data and len(data) > 0:
-            coords = (float(data[0]["lat"]), float(data[0]["lon"]))
-            return coords
-
+        
+        if data.get("results") and len(data["results"]) > 0:
+            coords = data["results"][0]["geometry"]
+            return (coords["lat"], coords["lng"])
+        
         st.error(f"❌ Postleitzahl '{postcode}' nicht gefunden")
         return None
 
     except Exception as e:
         st.error(f"❌ Fehler: {str(e)}")
         return None
+
 def get_gas_stations(latitude: float, longitude: float, fuel_type: str) -> Optional[List[Dict]]:
     """Ruft Tankstellen von Tankerkönig API ab"""
     try:
