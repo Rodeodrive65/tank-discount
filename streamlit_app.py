@@ -58,50 +58,43 @@ POSTCODE_CACHE = {
     "70173": (48.7758, 9.1829),   # Stuttgart
     "30159": (52.3759, 9.7320),   # Hannover
     "28195": (53.0950, 8.8017),   # Bremen
+    "28217": (53.0970, 8.7680),   # Bremen-Walle
     "02826": (51.0504, 13.6552),  # Dresden
+    "04109": (51.3397, 12.3731),  # Leipzig
+    "90402": (49.4521, 11.0767),  # Nürnberg
+    "98550": (50.9528, 11.5820),  # Coburg
+    "37073": (51.5386, 9.9360),   # Göttingen
+    "44135": (51.4556, 7.4116),   # Dortmund
+    "64283": (49.8699, 8.6512),   # Darmstadt
+    "22305": (53.5850, 10.0167),  # Hamburg-Alsterdorf
 }
 
 @st.cache_data(ttl=3600)
 def get_coordinates_from_postcode(postcode: str) -> Optional[tuple]:
-    """Konvertiert PLZ zu Koordinaten mit Fallback-Cache"""
-
-    # Prüfe lokalen Cache zuerst
-    if postcode in POSTCODE_CACHE:
-        return POSTCODE_CACHE[postcode]
-
+    """Konvertiert PLZ zu Koordinaten mit Geoapify"""
     try:
-        # Versuche Nominatim mit besseren Parametern
+        # Nutze Geoapify (kostenlos, kein Rate Limiting!)
         response = requests.get(
-            "https://nominatim.openstreetmap.org/search",
+            "https://api.geoapify.com/v1/geocode/search",
             params={
-                "q": f"{postcode}, Germany",
-                "format": "json",
-                "limit": 1,
-                "countrycodes": "de"
+                "text": f"{postcode}, Germany",
+                "apiKey": "ee04c76f8b354e3fa97f87e7e3a6fa56"
             },
-            timeout=10,
-            headers={"User-Agent": "EmiliesTankDiscount/1.0"}
+            timeout=10
         )
         response.raise_for_status()
-
         data = response.json()
-        if data and len(data) > 0:
-            coords = (float(data[0]["lat"]), float(data[0]["lon"]))
-            return coords
-
+        
+        if data.get("features") and len(data["features"]) > 0:
+            coords = data["features"][0]["geometry"]["coordinates"]
+            return (coords[1], coords[0])  # lat, lon
+        
         st.error(f"❌ Postleitzahl '{postcode}' nicht gefunden")
         return None
 
-    except requests.exceptions.Timeout:
-        st.error("❌ Nominatim API zu langsam. Versuche später nochmal.")
-        return None
-    except requests.exceptions.ConnectionError:
-        st.error("❌ Keine Internetverbindung")
-        return None
     except Exception as e:
         st.error(f"❌ Fehler: {str(e)}")
         return None
-
 
 def get_gas_stations(latitude: float, longitude: float, fuel_type: str) -> Optional[List[Dict]]:
     """Ruft Tankstellen von Tankerkönig API ab"""
