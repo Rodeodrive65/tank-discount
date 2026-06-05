@@ -47,11 +47,28 @@ search_button = st.sidebar.button(
     type="primary"
 )
 
-# Hilfsfunktionen
-@st.cache_data(ttl=3600)  # Cache für 1 Stunde
+# Häufige deutsche Postleitzahlen (schneller Fallback)
+POSTCODE_CACHE = {
+    "10115": (52.5200, 13.4050),  # Berlin
+    "49377": (52.7414, 8.2855),   # Vechta
+    "80331": (48.1351, 11.5820),  # München
+    "50667": (50.9418, 6.9483),   # Köln
+    "20095": (53.5511, 9.9937),   # Hamburg
+    "60311": (50.1109, 8.6821),   # Frankfurt
+    "70173": (48.7758, 9.1829),   # Stuttgart
+    "30159": (52.3759, 9.7320),   # Hannover
+    "28195": (53.0950, 8.8017),   # Bremen
+    "02826": (51.0504, 13.6552),  # Dresden
+}
+
+@st.cache_data(ttl=3600)
 def get_coordinates_from_postcode(postcode: str) -> Optional[tuple]:
-    """Konvertiert PLZ zu Koordinaten (OpenStreetMap)"""
-    time.sleep(1.1)  # Respect Nominatim rate limit
+    """Konvertiert PLZ zu Koordinaten mit Fallback-Cache"""
+
+    # Prüfe lokalen Cache zuerst
+    if postcode in POSTCODE_CACHE:
+        return POSTCODE_CACHE[postcode]
+
     try:
         # Versuche Nominatim mit besseren Parametern
         response = requests.get(
@@ -59,34 +76,30 @@ def get_coordinates_from_postcode(postcode: str) -> Optional[tuple]:
             params={
                 "q": f"{postcode}, Germany",
                 "format": "json",
-                "limit": 1
+                "limit": 1,
+                "countrycodes": "de"
             },
-            timeout=15,
-            headers={"User-Agent": "EmiliesTankDiscount/1.0"},
-            allow_redirects=True
+            timeout=10,
+            headers={"User-Agent": "EmiliesTankDiscount/1.0"}
         )
         response.raise_for_status()
 
-        # Überprüfe, ob die Antwort gültig ist
-        if response.status_code == 200 and response.text:
-            data = response.json()
-            if data and len(data) > 0:
-                return (float(data[0]["lat"]), float(data[0]["lon"]))
+        data = response.json()
+        if data and len(data) > 0:
+            coords = (float(data[0]["lat"]), float(data[0]["lon"]))
+            return coords
 
-        st.error(f"❌ Postleitzahl '{postcode}' konnte nicht gefunden werden")
+        st.error(f"❌ Postleitzahl '{postcode}' nicht gefunden")
         return None
 
     except requests.exceptions.Timeout:
-        st.error("❌ Timeout: API antwortet zu langsam. Versuche es später nochmal.")
+        st.error("❌ Nominatim API zu langsam. Versuche später nochmal.")
         return None
     except requests.exceptions.ConnectionError:
-        st.error("❌ Verbindungsfehler: Prüfe deine Internetverbindung.")
-        return None
-    except ValueError as e:
-        st.error(f"❌ Fehler beim Parsen der API-Antwort. Versuche es in ein paar Sekunden nochmal.")
+        st.error("❌ Keine Internetverbindung")
         return None
     except Exception as e:
-        st.error(f"❌ Unerwarteter Fehler: {str(e)}")
+        st.error(f"❌ Fehler: {str(e)}")
         return None
 
 
