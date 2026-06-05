@@ -69,33 +69,34 @@ POSTCODE_CACHE = {
     "22305": (53.5850, 10.0167),  # Hamburg-Alsterdorf
 }
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)  # Cache 24 Stunden
 def get_coordinates_from_postcode(postcode: str) -> Optional[tuple]:
-    """Konvertiert PLZ zu Koordinaten mit Geoapify"""
+    """Konvertiert PLZ zu Koordinaten (Nominatim mit Cache)"""
     try:
-        # Nutze Geoapify (kostenlos, kein Rate Limiting!)
         response = requests.get(
-            "https://api.geoapify.com/v1/geocode/search",
+            "https://nominatim.openstreetmap.org/search",
             params={
-                "text": f"{postcode}, Germany",
-                "apiKey": "ee04c76f8b354e3fa97f87e7e3a6fa56"
+                "q": f"{postcode}, Germany",
+                "format": "json",
+                "limit": 1,
+                "countrycodes": "de"
             },
-            timeout=10
+            timeout=10,
+            headers={"User-Agent": "EmiliesTankDiscount/1.0"}
         )
         response.raise_for_status()
+
         data = response.json()
-        
-        if data.get("features") and len(data["features"]) > 0:
-            coords = data["features"][0]["geometry"]["coordinates"]
-            return (coords[1], coords[0])  # lat, lon
-        
+        if data and len(data) > 0:
+            coords = (float(data[0]["lat"]), float(data[0]["lon"]))
+            return coords
+
         st.error(f"❌ Postleitzahl '{postcode}' nicht gefunden")
         return None
 
     except Exception as e:
         st.error(f"❌ Fehler: {str(e)}")
         return None
-
 def get_gas_stations(latitude: float, longitude: float, fuel_type: str) -> Optional[List[Dict]]:
     """Ruft Tankstellen von Tankerkönig API ab"""
     try:
